@@ -147,10 +147,10 @@ class ClimateDisplay:
     def update_display(self):
         dt = datetime.now()
         self.print(10, 0, "%02d:%02d:%02d" % (dt.hour, dt.minute, dt.second), (255, 80, 0))
-        self.print(9, 11, "%02.1fC %02d%%" % (self.outdoor_temp, self.outdoor_hum), (240, 30, 0))
-        self.print(2, 11, "o", (240, 30, 0))
-        self.print(9, 20, "%02.1fC %02d%%" % (self.bedroom_temp, self.bedroom_hum), (240, 0, 0))
-        self.print(2, 20, "i", (240, 0, 0))
+        self.print(9, 11, "%02.1fC %02d%%" % (self.bedroom_temp, self.bedroom_hum), (240, 30, 0))
+        self.print(2, 11, "i", (240, 30, 0))
+        self.print(9, 20, "%02.1fC %02d%%" % (self.outdoor_temp, self.outdoor_hum), (240, 0, 0))
+        self.print(2, 20, "o", (240, 0, 0))
         self.draw_line()
         self.flip()
 
