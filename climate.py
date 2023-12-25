@@ -45,7 +45,7 @@ OUTDOOR_HUM_QUERY = """SELECT last("hum")
 
 class ClimateDisplay:
 
-    TOPIC = "zigbee2mqtt/kitchen-climate-display"
+    TOPIC = "kitchen-climate-display"
 
     def __init__(self, *args, **kwargs):
 
@@ -124,13 +124,16 @@ class ClimateDisplay:
         self.canvas.Clear()
 
     def query_data(self, query):
-        result = self.client.query(query)
-        for value in result.raw["series"][0]["values"]:
-            if value[1] is None:
-                continue
+        try:
+            result = self.client.query(query)
+            for value in result.raw["series"][0]["values"]:
+                if value[1] is None:
+                    continue
 
-            return float(value[1])
-            break
+                return float(value[1])
+                break
+        except IndexError:
+            return 0.0
 
         return None
 
