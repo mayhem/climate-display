@@ -15,15 +15,15 @@ import paho.mqtt.client as mqtt
 DATA_UPDATE_INTERVAL = 5
 CLIENT_ID = socket.gethostname()
 
-BEDROOM_TEMP_QUERY = """SELECT last("temp")
-                          FROM "bedroom"
+KITCHEN_TEMP_QUERY = """SELECT last("temp")
+                          FROM "kitchen"
                          WHERE time >= now() - 2h
                            AND time <= now()
                       GROUP BY time(2m) fill(previous)
                       ORDER BY time DESC"""
 
-BEDROOM_HUM_QUERY = """SELECT last("hum")
-                          FROM "bedroom"
+KITCHEN_HUM_QUERY = """SELECT last("hum")
+                          FROM "kitchen"
                          WHERE time >= now() - 2h
                            AND time <= now()
                       GROUP BY time(2m) fill(previous)
@@ -79,14 +79,16 @@ class ClimateDisplay:
         self.client = InfluxDBClient("10.1.1.2", 8086, 'root', 'root', "hippooasis")
         self.outdoor_temp = 0.0
         self.outdoor_hum = 0
-        self.bedroom_temp = 0.0
-        self.bedroom_hum = 0
+        self.kitchen_temp = 0.0
+        self.kitchen_hum = 0
 
         self.mqttc = mqtt.Client(CLIENT_ID)
         self.mqttc.on_message = ClimateDisplay.on_message
         self.mqttc.connect("10.1.1.2", 1883, 60)
         self.mqttc.__self = self
         self.mqttc.subscribe(self.TOPIC)
+
+        self.on = True
 
  
     @staticmethod
@@ -106,16 +108,27 @@ class ClimateDisplay:
 
             brightness = js.get("brightness", None)
             if brightness is not None and (brightness < 0 or brightness > 100):
+                print("bad brightness")
                 return
 
+            print("set brightness %d" % brightness)
+            if brightness == 0:
+                self.on = False
+                self.clear()
+                self.flip()
+            else:
+                self.on = True
             self.matrix.brightness = brightness
 
     def flip(self):
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
     def print(self, x, y, text, color=(255,255,255)):
-        color = graphics.Color(color[0], color[1], color[2])
-        graphics.DrawText(self.canvas, self.font, x, y + (self.font.height - 4), color, text)
+        try:
+            color = graphics.Color(color[0], color[1], color[2])
+            graphics.DrawText(self.canvas, self.font, x, y + (self.font.height - 4), color, text)
+        except IndexError:
+            pass
 
     def draw_line(self):
         graphics.DrawLine(self.canvas, 0, 31, 63, 31, graphics.Color(255, 0, 255))
@@ -144,13 +157,17 @@ class ClimateDisplay:
     def update_climate_data(self):
         self.outdoor_temp = self.query_data(OUTDOOR_TEMP_QUERY)
         self.outdoor_hum = int(self.query_data(OUTDOOR_HUM_QUERY))
-        self.bedroom_temp = self.query_data(BEDROOM_TEMP_QUERY)
-        self.bedroom_hum = int(self.query_data(BEDROOM_HUM_QUERY))
+        self.kitchen_temp = self.query_data(KITCHEN_TEMP_QUERY)
+        self.kitchen_hum = int(self.query_data(KITCHEN_HUM_QUERY))
 
     def update_display(self):
+
+        if not self.on:
+            return
+
         dt = datetime.now()
         self.print(10, 0, "%02d:%02d:%02d" % (dt.hour, dt.minute, dt.second), (255, 80, 0))
-        self.print(9, 11, "%02.1fC %02d%%" % (self.bedroom_temp, self.bedroom_hum), (240, 30, 0))
+        self.print(9, 11, "%02.1fC %02d%%" % (self.kitchen_temp, self.kitchen_hum), (240, 30, 0))
         self.print(2, 11, "i", (240, 30, 0))
         self.print(9, 20, "%02.1fC %02d%%" % (self.outdoor_temp, self.outdoor_hum), (240, 0, 0))
         self.print(2, 20, "o", (240, 0, 0))
